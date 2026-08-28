@@ -51,8 +51,8 @@
 
 ### 4.2 verify と update の分離
 
-- `scripts/verify-vendor.sh`: 現行 snapshot を vendor.lock と照合するだけ。差分 = 改ざん or 手編集であり、**即失敗**。CI の全ジョブで実行。
-- `scripts/propose-upstream-update.sh`: ①tracking ref (main) から candidate SHA を解決 → ②allowlist + 参照解析で閉包を再確定 → ③candidate snapshot + 新 vendor.lock を生成 → ④contract test 実行 → ⑤合格したら PR 作成。path 消失・認証失敗・テスト失敗はすべて issue / 通知にする (警告放置にしない)。週次で CI 実行。
+- `scripts/verify-vendor.py`: 現行 snapshot を vendor.lock と照合するだけ。差分 = 改ざん or 手編集であり、**即失敗**。CI の全ジョブで実行。
+- `scripts/propose-upstream-update.py`: ①tracking ref (main) から candidate SHA を解決 → ②allowlist + 参照解析で閉包を再確定 → ③candidate snapshot + 新 vendor.lock を生成 → ④contract test 実行 → ⑤合格したら PR 作成。path 消失・認証失敗・テスト失敗はすべて issue / 通知にする (警告放置にしない)。週次で CI 実行。
 - vendor ファイルは無改変。旧 vendoring の URL 書き換えは SKILL.md 側の「参照解決規則」(bundled パス読み替え表) に移す。
 
 ## 5. ライセンス (v2 major-9 反映)
