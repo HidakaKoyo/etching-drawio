@@ -16,11 +16,16 @@ esac
 root_dir="$(cd "$here/.." && pwd)"
 lib_dir="$root_dir/lib"
 
-# The version is the one the release build writes into the distributed closure.
+# The version is the one the release build writes into the skill directory
+# (scripts/build-release.py). It is looked for in both supported layouts: the
+# skill beside the CLI, and the CLI inside the skill (lib/etch_paths.py).
 tool_version="0.0.0"
-if [ -r "$root_dir/VERSION" ]; then
-  IFS= read -r tool_version < "$root_dir/VERSION" || tool_version="0.0.0"
-fi
+for version_file in "$root_dir/skills/etching/VERSION" "$root_dir/VERSION"; do
+  if [ -r "$version_file" ]; then
+    IFS= read -r tool_version < "$version_file" || tool_version="0.0.0"
+    break
+  fi
+done
 
 # exit 5 has to carry a diagnostics document, but the document is normally built
 # by Python. When python3 itself is the missing dependency there is nothing left

@@ -1,0 +1,17 @@
+{
+  "name": "etching-drawio",
+  "description": "Single-plugin marketplace for etching-drawio, a validated draw.io authoring loop for agents.",
+  "owner": {
+    "name": "Koyo Hidaka",
+    "url": "https://github.com/HidakaKoyo"
+  },
+  "plugins": [
+    {
+      "name": "etching-drawio",
+      "source": "./",
+      "description": "Draft, validate, repair and deliver .drawio diagrams with machine-readable diagnostics.",
+      "version": "0.1.0",
+      "license": "MIT"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "etching-drawio",
+  "displayName": "etching",
+  "version": "0.1.0",
+  "description": "Validated draw.io authoring for agents: draft, validate, repair, then deliver a generation with a receipt. Never exports straight from the raw drawio CLI.",
+  "author": {
+    "name": "Koyo Hidaka",
+    "url": "https://github.com/HidakaKoyo"
+  },
+  "homepage": "https://github.com/HidakaKoyo/etching-drawio",
+  "repository": "https://github.com/HidakaKoyo/etching-drawio",
+  "license": "MIT",
+  "keywords": ["drawio", "diagram", "skill", "validation", "svg", "png", "pdf"]
+}
