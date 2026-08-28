@@ -4,9 +4,9 @@ Hand-written. Versions are the plugin version in `.claude-plugin/plugin.json`;
 `skills/etching/VERSION` is a generated copy of it and the diagnostics
 `schemaVersion` moves independently (README, "Versioning").
 
-## 0.1.0 — unreleased
+## 0.1.0 — 2026-08-28
 
-First release candidate. Everything below is new.
+First release. Everything below is new.
 
 ### The skill
 
