@@ -1,0 +1,99 @@
+name: upstream
+
+# The vendored snapshot is pinned, so upstream moving is invisible until
+# something looks. This job looks, once a week, and files an issue when there is
+# something to decide. It never changes the tree: adopting an update is a
+# reviewed commit, not a scheduled one (docs/PLAN.md §4.2).
+
+on:
+  schedule:
+    # Mondays, 04:17 UTC. Off the hour so as not to queue behind everything
+    # else that runs at :00.
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: upstream-watch
+  cancel-in-progress: false
+
+jobs:
+  propose:
+    name: propose upstream update
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+
+      # Exit 0 means the candidate equals the lock, 1 means it differs or a
+      # documented expectation was not met, 2 means the check itself could not
+      # run. Only 0 is silence: an operational failure that only logged would be
+      # a watcher that quietly stopped watching.
+      - name: Re-derive the closure at upstream main
+        id: propose
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set +e
+          python3 scripts/propose-upstream-update.py --ref main --check-docs -v \
+            > /tmp/propose.log 2>&1
+          status=$?
+          set -e
+          cat /tmp/propose.log
+          candidate=$(sed -n 's/^== candidate .* @ \([0-9a-f]\{40\}\)$/\1/p' /tmp/propose.log | head -1)
+          echo "status=$status" >> "$GITHUB_OUTPUT"
+          echo "candidate=${candidate:-unknown}" >> "$GITHUB_OUTPUT"
+
+      - name: File an issue
+        if: steps.propose.outputs.status != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          STATUS: ${{ steps.propose.outputs.status }}
+          CANDIDATE: ${{ steps.propose.outputs.candidate }}
+        run: |
+          if [ "$STATUS" = "1" ]; then
+            title="upstream: drawio-mcp moved to ${CANDIDATE:0:12}"
+          else
+            title="upstream: the update check could not run"
+          fi
+
+          # One open issue per candidate. A weekly job that opened a duplicate
+          # every Monday would train everyone to ignore it.
+          existing=$(gh issue list --state open --label upstream \
+            --search "$(printf '%s' "$title")" --json title,number \
+            --jq ".[] | select(.title == \"$title\") | .number" | head -1)
+          if [ -n "$existing" ]; then
+            echo "already open as #$existing"
+            exit 0
+          fi
+
+          gh label create upstream --color 0E8A16 \
+            --description "Vendored upstream snapshot" 2>/dev/null || true
+
+          {
+            echo "\`scripts/propose-upstream-update.py\` exited $STATUS on the"
+            echo "scheduled run of \`${GITHUB_WORKFLOW}\`."
+            echo
+            if [ "$STATUS" = "1" ]; then
+              echo "Upstream \`main\` no longer matches \`skills/etching/vendor.lock\`."
+              echo "Adopting it is a reviewed change: re-run the script locally,"
+              echo "check the diff of the candidate snapshot, run the contract and"
+              echo "characterization suites against it, then commit the new lock"
+              echo "and snapshot together."
+            else
+              echo "The check itself failed — network, rate limit, or a path that"
+              echo "no longer exists upstream. The pin is unaffected; what is"
+              echo "unknown is whether upstream moved."
+            fi
+            echo
+            echo "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+            echo
+            echo '```'
+            tail -50 /tmp/propose.log
+            echo '```'
+          } > /tmp/issue-body.md
+
+          gh issue create --title "$title" --label upstream --body-file /tmp/issue-body.md

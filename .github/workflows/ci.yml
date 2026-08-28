@@ -27,14 +27,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # contracts/environment.md §3 declares 3.9 as the floor, so one leg of the
       # matrix runs on exactly 3.9 to keep the claim honest. macOS keeps the
       # runner's own python3, which is well above the floor.
       - name: Pin python to the declared floor
         if: runner.os == 'Linux'
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.9'
 
@@ -45,6 +45,12 @@ jobs:
         run: |
           python3 --version
           bash --version | head -1
+
+      # The version is edited in plugin.json and copied into marketplace.json
+      # and skills/etching/VERSION by scripts/build-release.py. --check is what
+      # keeps a hand-edited copy from shipping (docs/PLAN.md §9).
+      - name: Release version copies
+        run: python3 scripts/build-release.py --check -v
 
       - name: Contract fixtures
         run: python3 scripts/validate-contracts.py
@@ -66,6 +72,30 @@ jobs:
           ETCH_CLI: ${{ github.workspace }}/bin/etch
         run: python3 tests/characterization/test_migration.py
 
+  # The clean-install procedure of contracts/environment.md §6, both
+  # distribution layouts, on both operating systems. This is where the Linux
+  # half of the loop is exercised: Phase 2 dogfooding only ever ran on macOS.
+  acceptance:
+    name: acceptance (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Pin python to the declared floor
+        if: runner.os == 'Linux'
+        uses: actions/setup-python@v7
+        with:
+          python-version: '3.9'
+
+      # No draw.io install here on purpose: the suite stubs the exporter,
+      # because what it tests is the install layout, not the export.
+      - name: Distribution layouts
+        run: python3 tests/acceptance/test_distribution.py -v
+
   # Everywhere else draw.io is a bash stub. Here the real Desktop build runs, so
   # this job is the only evidence that export works at all; a failure here is a
   # CI failure (contracts/environment.md §6 step 6). It does not depend on the
@@ -79,7 +109,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # The .deb lands drawio on PATH *and* at /usr/bin/drawio, so both the PATH
       # branch and the Linux-defaults branch of the resolution order are real
@@ -107,9 +137,13 @@ jobs:
       # The suite exits 0 when draw.io is absent, which is right for a laptop and
       # wrong here: after the install step above, absence means the install did
       # not take. So a skipped suite is turned back into a failure.
+      # EXPECT_DRAWIO_VERSION makes the pin load-bearing: the suite fails if the
+      # installed build, or the version the receipt records, is anything other
+      # than what this workflow installed.
       - name: Real export smoke
         env:
           ETCH_CLI: ${{ github.workspace }}/bin/etch
+          EXPECT_DRAWIO_VERSION: ${{ env.DRAWIO_VERSION }}
           DISPLAY_WRAPPER: ${{ runner.os == 'Linux' && 'xvfb-run -a' || '' }}
         run: |
           set -o pipefail
@@ -123,7 +157,7 @@ jobs:
     name: shellcheck
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       # contracts/environment.md §2: bash 3.2 compatible. ShellCheck ships with
       # the ubuntu runner image.
