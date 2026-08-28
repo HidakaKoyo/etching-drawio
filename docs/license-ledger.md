@@ -100,4 +100,4 @@ vault vendoring が **どの上流 commit から取得されたか**は、vault 
 
 ## 5. 再実行の手順
 
-pinned SHA を更新したとき、および Phase 3a の release gate 判定時に本台帳を再作成する。手順は `scripts/propose-upstream-update.sh` の閉包再確定 (closure-allowlist §2) の後に、閉包各ファイルの (a) SHA-256、(b) per-file license ヘッダーの有無、(c) NOTICE の有無、(d) root LICENSE の SPDX 判定、を再取得して本文書の §1 と §2 を差し替える。1 件でも出所不明が出たら Phase 3b を止める。
+pinned SHA を更新したとき、および Phase 3a の release gate 判定時に本台帳を再作成する。手順は `scripts/propose-upstream-update.py` の閉包再確定 (closure-allowlist §2) の後に、閉包各ファイルの (a) SHA-256、(b) per-file license ヘッダーの有無、(c) NOTICE の有無、(d) root LICENSE の SPDX 判定、を再取得して本文書の §1 と §2 を差し替える。1 件でも出所不明が出たら Phase 3b を止める。

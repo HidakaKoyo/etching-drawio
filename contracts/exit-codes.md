@@ -14,10 +14,16 @@
 | 3 | hash 競合 (正本が想定外に書き換わっていた) | 出す | `failed` |
 | 4 | usage error (引数・profile が不正で、何を処理すべきか決められない) | **出さない** | — |
 | 5 | 依存欠落 (必須の外部コマンド・ランタイムが無い) | 出す | `failed` |
+| 6 | internal error (検証系自体の異常終了) | ベストエフォートで出す | `failed` |
+| 130 | signal 終了 (HUP / INT / TERM) | **出さない** | — |
 
 `status: skipped` の exit code が 0 である点に注意する。処理対象外は異常ではないので code では区別せず、JSON の `status` で `passed` と区別する。
 
-exit 4 だけ診断 JSON を出さない。引数や profile が壊れている段階では出力先も対象成果物も確定できず、`checks[]` を組み立てられないためである。エラー本文は stderr に出す。この非対称は意図的なもので、schema の集約規則 (`status: failed` は unmet な required check の存在を要求する) と矛盾させないための設計である。
+exit 4 と exit 130 は診断 JSON を出さない。引数や profile が壊れている段階では出力先も対象成果物も確定できず、`checks[]` を組み立てられないためである。エラー本文は stderr に出す。この非対称は意図的なもので、schema の集約規則 (`status: failed` は unmet な required check の存在を要求する) と矛盾させないための設計である。
+
+exit 130 も JSON を出さない。signal を受けた時点で実行は途中であり、`checks[]` は「まだ走っていない」だけの状態を含む。それを `failed` として出すと、検証で落ちたのか中断されたのかを読者が区別できない。130 は POSIX 慣行 (128 + SIGINT) に合わせた**予約 code** であり、診断 contract の外にある。stderr に中断した旨だけを出す。
+
+exit 6 は「検証系自体が壊れた」場合に限る。入力が悪いのではなく、CLI か CLI が呼ぶ内部処理が想定外の状態で落ちたときである。診断 JSON は**ベストエフォート**で出す (組み立てられるところまで組み立て、`internal/*` の required check を failed にする)。組み立てられなければ stderr だけで終わってよい。
 
 ## 2. 発火点
 
@@ -26,6 +32,7 @@ exit 4 だけ診断 JSON を出さない。引数や profile が壊れている�
 - 全 required check が `passed` (optional check の failed / skipped は 0 を妨げない)
 - 対象 deliverable が 1 件も無い指定だった (`status: skipped`)
 - `etch gc` が削除対象なしで正常終了した場合を含む
+- 外部リソース参照 (style / image 属性中の http・file URL) を検出した。これは **optional check `security/no-external-ref` の failed** として表現し、診断は `security/external-ref` の severity=warning にする。top-level status も exit code も変えない。`--allow-external` を渡した場合は check を waiver 付きの skipped にし、診断を出さない
 
 ### exit 1 — validation failure
 
@@ -71,8 +78,22 @@ draw.io Desktop を起動して以降の失敗。
 
 依存欠落は診断 JSON 上では required check の `failed` として表現する (`dependency/*`)。したがって `status` は `failed` になり、exit 1 / 2 との区別は code だけが担う。
 
+### exit 6 — internal error
+
+CLI 自身の異常。入力の不備ではない。
+
+- 想定していない例外が検証・export・納品のいずれかの段で送出された
+- 内部で呼んだ補助処理が契約外の終了状態を返した (旧 wrapper が semantic lint の想定外終了を exit 4 にしていたのを、ここに移す)
+- 出力すべき診断 JSON を組み立てられなかった
+
+診断 code は `internal/*`。JSON はベストエフォートで、出せる場合は `internal/*` の required check を failed にする。
+
+### exit 130 — signal 終了
+
+HUP / INT / TERM を受け取ったとき。実行中の子プロセス (draw.io) を含めて後始末し、`current` の切替も正本の置換も行わない。自プロセスが作った `.tmp` 世代は消す。診断 JSON は出さない。
+
 ## 3. 実装上の不変条件
 
-- 1 回の実行が返す code は 1 つ。複数の失敗が同時に起きた場合は **小さい番号ではなく、最初に確定した停止事由** を返す。処理順が validation → export → delivery で固定されているため、実際には 5 → 4 → 1 → 2 → 3 の順に確定する
+- 1 回の実行が返す code は 1 つ。複数の失敗が同時に起きた場合は **小さい番号ではなく、最初に確定した停止事由** を返す。処理順が validation → export → delivery で固定されているため、実際には 5 → 4 → 1 → 2 → 3 の順に確定する。6 と 130 はこの順序の外側で、どの段からでも発生しうる
 - code と JSON の `status` は必ず上表の対応に従う。テストで機械照合する
 - stdout に JSON 以外を書かない。診断 JSON を出す code では、JSON が単一のトップレベル値として完結している

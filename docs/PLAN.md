@@ -58,7 +58,7 @@
 ## 5. ライセンス (v2 major-9 反映)
 
 - root `LICENSE` = MIT (自作部分)。vendor が対象外であることを明記。
-- `references/upstream/` に上流の Apache-2.0 LICENSE と NOTICE (存在すれば) を保持。pinned SHA `14b318b` に NOTICE は存在しないため、この時点では該当なし (将来生えた場合の検知は `propose-upstream-update.sh` が行う)。
+- `references/upstream/` に上流の Apache-2.0 LICENSE と NOTICE (存在すれば) を保持。pinned SHA `14b318b` に NOTICE は存在しないため、この時点では該当なし (将来生えた場合の検知は `propose-upstream-update.py` が行う)。
 - `THIRD_PARTY_NOTICES.md`: component / source URL / commit SHA / 対象 path / 改変一覧 (原則「改変なし」)。
 - 出所不明が 1 件でもあれば public 化を止める **release gate** は維持する (推測での「jgraph 由来なら Apache」判定はしない)。
 - **v9 更新**: Phase 0a の実査で、閉包 6 ファイルすべての source・license・copyright を実ファイル単位で確定した。v8 が名指しで疑義を挙げていた `mxfile.xsd` と `style-reference.md` は、**いずれも上流 `shared/` の実在ファイルで、閉包規則からも正当に導出される上流由来と確定済み** (Apache-2.0 / Copyright 2025 JGraph Ltd)。出所不明は 0 件。台帳と根拠は `docs/license-ledger.md` を正とする。ただし gate の最終判定は Phase 3a 時点の pinned SHA に対して台帳を再実行して行う。
@@ -80,14 +80,15 @@
   2. required check に failed または skipped が 1 つでもある → `failed` (**必須依存の欠落も required check の failed として扱う** + exit 5)
   3. required がすべて passed → `passed`。optional check の failed / skipped (waiver の有無を問わず) は top-level を変えず、diagnostics (severity=warning) と receipt に残る (v4 minor-1 反映: optional の skip に waiver は必須でない。waiver は理由の記録手段)
 - top-level `skipped` の exit code は **0** (処理対象外は異常ではない。JSON の `status` で `passed` と区別する)。
-- exit code (確定): 0=passed / 1=validation failure / 2=export・出力検証失敗 / 3=hash 競合 / 4=usage error / **5=依存欠落** (v2 で未決だった分離を採用)。
+- exit code (確定): 0=passed / 1=validation failure / 2=export・出力検証失敗 / 3=hash 競合 / 4=usage error / **5=依存欠落** (v2 で未決だった分離を採用) / **6=internal error** (検証系自体の異常。JSON はベストエフォート) / **130=signal 終了** (予約。JSON を出さない)。6 と 130 は v9.1 (Phase 1b の司令塔決定) で追加。正本は `contracts/exit-codes.md`。
 - 互換性規則: `schemaVersion` は additive 変更で minor、フィールド削除・意味変更で major。
 
 ### 6.2 修復ループ (v2 major-3 反映)
 
 - 単位は fix set (非競合で決定的な修正の集合)。**全修復ラウンドは 1 つの作業コピー上で完結させ、正本 (.drawio) には途中経過を一切書き戻さない** (v5 major-1 反映)。fix set は作業コピーの temp 上で適用し、適用成功後に作業コピーを置換 → 全体を再検証、を繰り返す。
 - **hash handoff (並行編集の保護)**: 修復開始時に正本の SHA-256 を `H0` として保持。全 required check 合格後、**正本置換の直前に実測が `H0` であることを再照合し、一度だけ `Hfinal` (合格した作業コピーの内容) へ置換する** (不一致なら置換せず exit 3)。**納品 commit (= `current` pointer の切替。世代 rename ではない) の直前**にも正本が `Hfinal` のままであることを確認 (不一致なら pointer を切り替えず exit 3)。修復が失敗終了 (循環・打ち切り) した場合、正本は `H0` のまま無傷で、作業コピーは診断とともに failed 報告へ添付する。
-- **保護範囲の限定 (v6 major-1 反映)**: hash handoff と lock が競合を**防止**できるのは、この contract に従う協調 writer (etch CLI・etching skill 経由のエージェント) 同士に限る。draw.io Desktop 等の非協調 writer は lock を守らないため、照合と pointer 切替の間の競合窓を完全には閉じられない。この窓については**防止でなく検出**を保証する: receipt に入力正本の hash (`Hfinal`) を記録し、`etch verify` が現行正本の実測 hash と receipt を比較して不一致を診断 code 付きで報告する。人間との同時編集が予期される場面では、正本を直接置換せず `*.agent-proposal.drawio` として並置する既存 handoff 手順 (現 drawio-authoring 由来) を profile で選択できるようにする。**proposal mode では正本置換も `current` 切替も行わず、proposal ファイルとその receipt だけを生成し、receipt および `etch verify` の照合対象は proposal ファイルの hash とする** (v7 minor-1 反映)。
+- **lock 機構は持たない (v9.1: Phase 1b の司令塔決定)**: 出力 lock は世代 staging と二重の防護になり、stale lock という別の失敗様式を持ち込むため v1 では作らない。並行納品の競合は hash handoff に統合し、遅れた側を exit 3 で止める (`contracts/delivery.md` §2.1)。
+- **保護範囲の限定 (v6 major-1 反映)**: hash handoff が競合を**防止**できるのは、この contract に従う協調 writer (etch CLI・etching skill 経由のエージェント) 同士に限る。draw.io Desktop 等の非協調 writer はこの手順を通らないため、照合と pointer 切替の間の競合窓を完全には閉じられない。この窓については**防止でなく検出**を保証する: receipt に入力正本の hash (`Hfinal`) を記録し、`etch verify` が現行正本の実測 hash と receipt を比較して不一致を診断 code 付きで報告する。人間との同時編集が予期される場面では、正本を直接置換せず `*.agent-proposal.drawio` として並置する既存 handoff 手順 (現 drawio-authoring 由来) を profile で選択できるようにする。**proposal mode では正本置換も `current` 切替も行わず、proposal ファイルとその receipt だけを生成し、receipt および `etch verify` の照合対象は proposal ファイルの hash とする** (v7 minor-1 反映)。
 - 停止条件: 状態 fingerprint = **修復対象の作業コピー自体の canonical hash** + canonical 化した `(code, subject)` multiset (export 前の validation failure でも作業コピー hash は常に存在する)。**既出の fingerprint に戻ったら停止** (循環検知)。加えて fix set 5 回で打ち切り。文書が変化し診断が減っている限り、同一 code の再発だけでは止めない。
 - 停止時は納品禁止。diagnostics を添えて failed 報告。
 
@@ -99,13 +100,14 @@
   3. ディレクトリを `generations/<id>/` に rename
   4. `current` pointer (symlink または manifest ファイル) を atomic replace で新世代に向ける
 - **読者 protocol**: 読者は `current` を**一度だけ解決**し、得られた世代ディレクトリ (immutable) の path から全成果物と receipt を読む。`current/<file>` 形式で成果物ごとに再解決してはならない (世代混在の防止)。
-- 回収規則 (v4 major-2, v5 minor-1 反映): **v1 では旧世代の自動削除をしない**。自動回収の対象は **自プロセスが作った `.tmp` 世代のみ** (他プロセスの `.tmp` は経過時間だけでは削除しない。扱うなら作成者 PID の lock ownership とプロセス消滅の確認を必要条件とする)。完結した旧世代の削除は明示コマンド (`etch gc`) によるユーザー操作とし、reader lease を持たない以上「読み取り中でない」ことを CLI は保証しない、と contract に明記する。
+- 回収規則 (v4 major-2, v5 minor-1 反映): **v1 では旧世代の自動削除をしない**。自動回収の対象は **自プロセスが作った `.tmp` 世代のみ** (他プロセスの `.tmp` は経過時間だけでは削除しない。所有者を判定する手段が無いため v1 では触らない)。完結した旧世代の削除は明示コマンド (`etch gc`) によるユーザー操作とし、reader lease を持たない以上「読み取り中でない」ことを CLI は保証しない、と contract に明記する。
 - receipt の内容 (v2 minor-2 反映): 各成果物の SHA-256 / etch CLI バージョン / **draw.io Desktop バージョンと実行オプション** / 入力 .drawio の hash / vendor.lock の SHA / 実行 checks と status / waiver。
 
 ### 6.4 入力安全
 
 - XML パースで DTD / 外部 entity 拒否 (XXE 対策)。入力上限: byte 数 / node 数 / 深さ / 圧縮展開後サイズ。
-- 非圧縮強制ポリシー下では圧縮入力を暗黙変換せず、明示の診断 code で拒否。
+- 非圧縮強制ポリシー下では圧縮入力を暗黙変換せず、明示の診断 code で拒否。**このポリシーは v1 では常時 ON で、profile キーを持たない** (v9.1)。
+- 外部リソース参照 (style / image 属性中の http・file URL) の診断 code は `security/*` namespace に置く (v9.1)。optional check の failed + severity=warning で報告し、exit code は変えない。
 
 ## 7. CLI 実装方針 (v2 major-6 反映)
 

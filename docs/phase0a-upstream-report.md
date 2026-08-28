@@ -87,7 +87,7 @@ XML Schema (XSD): https://github.com/jgraph/drawio-mcp/blob/main/shared/mxfile.x
 | 1 | §4.1 閉包初期値 = skill 一式 + `xml-reference.md` | 実際は 5 ファイル必要 (`mermaid-reference.md` / `style-reference.md` / `mxfile.xsd` が不足) | `docs/closure-allowlist.md` で確定。PLAN §4.1 の初期値記述は要更新 |
 | 2 | §4.1「閉包は snapshot 内ファイルが参照する上流 path を追加する規則で確定」 | 参照は相対 path ではなく絶対 URL。素直な path 解決では閉包が空になる | URL→path 写像規則を明文化 (closure-allowlist §2) |
 | 3 | §3「`plugins/claude-code/skills/drawio/` 一式」 | 中身は `SKILL.md` 1 ファイル | 表現の実態合わせ。実害なし |
-| 4 | §5「NOTICE (存在すれば)」 | この SHA には NOTICE なし | 該当なし。`propose-upstream-update.sh` は将来 NOTICE が生えた場合を検知できるようにする |
+| 4 | §5「NOTICE (存在すれば)」 | この SHA には NOTICE なし | 該当なし。`propose-upstream-update.py` は将来 NOTICE が生えた場合を検知できるようにする |
 | 5 | §5「`mxfile.xsd` と `style-reference.md` の出所不明リスク」 | 両方とも上流 `shared/` の実在ファイルで、内容も一致 | 出所不明 0 件。release gate は license 面ではクリア |
 
 上流裏取りの結論として、**PLAN の中核前提 (xml-reference.md が正本であること、上流が Apache-2.0 であること) はいずれも成立**しており、修正が要るのは閉包の粒度と参照解決規則の記述である。設計そのものの見直しは不要と判断する。

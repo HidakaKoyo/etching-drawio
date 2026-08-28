@@ -96,7 +96,7 @@
     },
     "diagnosticCode": {
       "type": "string",
-      "description": "Namespaced diagnostic code, lowercase kebab segments joined by '/'. Namespaces in v1: xml/*, style/*, export/*, delivery/*, input/*, dependency/*. The namespace composition/* is reserved for the v2 post-render geometry checks (PLAN section 11) and MUST NOT be emitted by v1.",
+      "description": "Namespaced diagnostic code, lowercase kebab segments joined by '/'. Namespaces in v1: xml/*, style/*, export/*, delivery/*, input/*, dependency/*, security/*, internal/*. security/* covers references that reach outside the document (security/external-ref for http/file URLs in style or image attributes). internal/* is emitted only with exit 6, when the tool itself failed rather than the input; that document is best-effort. The namespace composition/* is reserved for the v2 post-render geometry checks (PLAN section 11) and MUST NOT be emitted by v1.",
       "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*(/[a-z][a-z0-9]*(-[a-z0-9]+)*)+$",
       "not": { "pattern": "^composition/" }
     },

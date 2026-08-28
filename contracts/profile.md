@@ -49,6 +49,8 @@ profile を読むと決めた path について、次はいずれも exit 4 (usa
 
 以上。v1 はこの 2 キーだけである。
 
+**非圧縮強制は v1 では常時 ON であり、profile キーを持たない。** 圧縮された diagram 本文は常に exit 1 (`input/compressed-payload`) で拒否する。切り替え可能にすると「どちらのポリシーで検証されたのか」が receipt を読むまで分からなくなるため、v1 では固定する。
+
 ## 4. v1 に入れなかったもの (と、その理由)
 
 YAGNI の記録として残す。将来これらが必要になったら、`version` を上げるか additive なキー追加として schema を改訂する。
@@ -61,6 +63,8 @@ YAGNI の記録として残す。将来これらが必要になったら、`vers
 | 検証の厳しさ / check の有効無効 | required check を profile で無効化できると、waiver 不可の規則 (§6.1) を迂回する裏口になる |
 | Obsidian 埋め込みの記法、vault 内の置き場所 | CLI は分岐しない。エージェント向けなので `.etching/profile.md` 側に書く |
 | 世代の保持数 / gc ポリシー | v1 は自動削除をしない (`contracts/delivery.md` §5)。保持数の概念がまだ無い |
+| 非圧縮強制ポリシーの ON / OFF | v1 は常時 ON で固定する (§3 末尾) |
+| 外部リソース参照の許可 | 実行ごとの `--allow-external` で足りる。profile に置くと環境全体で恒久的に緩む |
 
 ## 5. Koyo-HQ での配置
 

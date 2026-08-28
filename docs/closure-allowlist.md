@@ -28,7 +28,7 @@
 
 PLAN §4.1 は「snapshot 内ファイルが参照する上流 path を追加する」と定めるが、上流の参照は相対 path ではなく **絶対 URL** である。素直に相対 path 解決だけを実装すると閉包が root 1 ファイルで閉じてしまい、規則が空回りする。そこで実装上の規則を次のように具体化する。
 
-`scripts/propose-upstream-update.sh` の閉包再確定ステップは、閉包内の各ファイル本文から次の 2 形の URL を抽出し、捕捉した `<path>` を閉包に追加する。追加がなくなるまで反復する (不動点)。
+`scripts/propose-upstream-update.py` の閉包再確定ステップは、閉包内の各ファイル本文から次の 2 形の URL を抽出し、捕捉した `<path>` を閉包に追加する。追加がなくなるまで反復する (不動点)。
 
 ```
 https://raw.githubusercontent.com/jgraph/drawio-mcp/<ref>/<path>
@@ -62,7 +62,7 @@ round 3: 追加なし (mermaid-reference.md / mxfile.xsd は上流内向き参�
 | `plugins/claude-code/.claude-plugin/plugin.json` | 上流 plugin のホスト manifest。etching は自前の `.claude-plugin/plugin.json` を持つ (PLAN §9) ため取り込むと version の正本が二重化する。上流版数の記録は `THIRD_PARTY_NOTICES.md` に文字列として残す (この SHA では `1.1.0`) |
 | `plugins/claude-code/README.md` / `DEVELOPING.md` / root `README.md` / `CLAUDE.md` | 上流 repo の運用文書。skill の実行閉包に含まれない |
 | `mcp-app-server/` / `mcp-tool-server/` / `shape-search/` / `project-instructions/` | MCP サーバー実装と別配布形態。PLAN §11 でスコープ外 |
-| `NOTICE` | この SHA には存在しない。将来生えたら閉包の固定エントリに追加する (§2 の失敗規則とは別に、存在検知として `propose-upstream-update.sh` でチェックする) |
+| `NOTICE` | この SHA には存在しない。将来生えたら閉包の固定エントリに追加する (§2 の失敗規則とは別に、存在検知として `propose-upstream-update.py` でチェックする) |
 
 ## 4. Phase 0c への申し送り
 
