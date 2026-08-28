@@ -5,6 +5,11 @@ lists them, where they came from, and what was changed. It is generated from
 `docs/license-ledger.md` and kept in step with `skills/etching/vendor.lock`;
 `scripts/verify-vendor.py` is what proves the shipped files still match.
 
+Last re-verified against the pinned commit on 2026-08-28 (the release-candidate
+license gate): all six files fetched from the pinned commit hash to the values
+below, upstream still has no `NOTICE`, and none of the six carries a per-file
+license header. Nothing here is of unknown provenance.
+
 The authoritative, machine-readable record is `skills/etching/vendor.lock`
 (pinned commit, per-file SHA-256, git blob id, git mode, tree oids). This
 document is the human-readable view of the same facts.
@@ -54,13 +59,13 @@ rules and the exclusions are recorded in `docs/closure-allowlist.md`.
 
 That file states that its data was extracted from the draw.io source code, so
 it is a second-order derivative of `jgraph/drawio`. It is redistributed here
-under the `drawio-mcp` repository license, which covers it, and both projects
-are Apache-2.0 works of JGraph Ltd. No additional obligation follows from the
-derivation.
+under the `drawio-mcp` repository license, which covers it. `jgraph/drawio` was
+checked directly and is Apache-2.0 as well, with the same copyright holder
+(JGraph Ltd), so no additional obligation follows from the derivation.
 
 ## Everything else
 
 All other files in this repository are original work under this project's own
-license (MIT; the root `LICENSE` file lands with the release candidate in
-Phase 3a). That license does not cover `skills/etching/references/upstream/`,
-which is governed by Apache-2.0 as described above.
+license, MIT, in the root `LICENSE` file. That license does not cover
+`skills/etching/references/upstream/`, which is governed by Apache-2.0 as
+described above.

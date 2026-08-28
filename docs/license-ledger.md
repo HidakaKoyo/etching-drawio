@@ -18,7 +18,22 @@
 
 **license gate は通過可能な状態にある** (Phase 3b の public 化を license 面で阻む要因はない)。PLAN §5 が名指しでリスク視していた `mxfile.xsd` と `style-reference.md` は、いずれも上流 `shared/` の実在ファイルであり、内容も一致した。
 
-ただし gate の最終判定は Phase 3a で `THIRD_PARTY_NOTICES.md` を作成し、その時点の pinned SHA に対して本台帳を再実行してから行う。本台帳は Phase 0a 時点のスナップショットである。
+### 0.1 Phase 3a の再実行結果 (2026-08-28)
+
+release gate の最終判定として、pinned SHA `14b318b1…` の上流 tarball を再取得し、閉包 6 ファイルを実ファイル単位で再照合した。
+
+| 確認項目 | 結果 |
+|---|---|
+| 閉包 6 ファイルの SHA-256 と `vendor.lock` の一致 | 6/6 一致 (byte-identical) |
+| ローカル snapshot と `vendor.lock` の一致 (`scripts/verify-vendor.py`) | 一致 |
+| 上流 `NOTICE` の有無 | 無し (tree 全走査)。Apache-2.0 §4(d) は発生しない |
+| 閉包各ファイルの per-file license ヘッダー | 6 件とも無し。root `LICENSE` が覆う |
+| `drawio-mcp` の SPDX 判定 | Apache-2.0 |
+| **出所不明** | **0 件** |
+
+§2.1 が「Phase 3a で一次確認することを推奨」としていた `jgraph/drawio` 本体のライセンスも直接確認し、**Apache-2.0** であることを確定した (GitHub license API、`LICENSE`)。`style-reference.md` の二次的出自について追加義務が生じないという §2.1 の判断は、これで推定でなく確認済みの事実になった。
+
+**license gate 通過**。Phase 3b (public 化) を license 面で阻む要因は無い。
 
 ## 1. 上流ライセンスの実体
 
@@ -94,9 +109,9 @@ vault vendoring が **どの上流 commit から取得されたか**は、vault 
 
 | 対象 | license |
 |---|---|
-| root `LICENSE` (etching 自作部分) | MIT。vendor が対象外であることを本文に明記する (PLAN §5) |
+| root `LICENSE` (etching 自作部分) | MIT。vendor が対象外であることを本文末尾に明記済み (PLAN §5) |
 | `references/upstream/` 配下 | Apache-2.0 (本台帳 §2) |
-| `THIRD_PARTY_NOTICES.md` | Phase 3a で作成。component / source URL / commit SHA / 対象 path / 改変一覧 (「改変なし」) を記載 |
+| `THIRD_PARTY_NOTICES.md` | 作成済み。component / source URL / commit SHA / 対象 path / 改変一覧 (「改変なし」) を記載 |
 
 ## 5. 再実行の手順
 
