@@ -1,0 +1,66 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      # contracts/environment.md §3: python3 >= 3.9, standard library only.
+      # The runner image's own python3 is used on purpose - no pip, no uv, so a
+      # dependency that crept into the tool would fail here rather than pass.
+      - name: Report the runtime
+        run: |
+          python3 --version
+          bash --version | head -1
+
+      - name: Contract fixtures
+        run: python3 scripts/validate-contracts.py
+
+      - name: Vendor snapshot
+        run: python3 scripts/verify-vendor.py
+
+      # ETCH_CLI points both suites at the new CLI. Without it the invariant
+      # suite falls back to the legacy wrapper, which lives in the Koyo-HQ vault
+      # and does not exist here. Export cases run against the bash stub the
+      # harness puts in front of PATH; real draw.io export is Phase 1d.
+      - name: Characterization - invariants
+        env:
+          ETCH_CLI: ${{ github.workspace }}/bin/etch
+        run: python3 tests/characterization/test_invariants.py
+
+      - name: Characterization - migration
+        env:
+          ETCH_CLI: ${{ github.workspace }}/bin/etch
+        run: python3 tests/characterization/test_migration.py
+
+  shellcheck:
+    name: shellcheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # contracts/environment.md §2: bash 3.2 compatible. ShellCheck ships with
+      # the ubuntu runner image.
+      - name: ShellCheck
+        run: |
+          shellcheck --version
+          shellcheck --shell=bash --severity=style bin/etch
