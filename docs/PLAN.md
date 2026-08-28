@@ -1,7 +1,8 @@
-# etching-drawio 設計・実装プラン (draft v8)
+# etching-drawio 設計・実装プラン (draft v9)
 
 - 作成: 2026-08-28 / 司令塔セッション
-- 状態: Codex 敵対的レビュー 7 巡目 (minor 1) を反映した改訂版 (v8)。8 巡目 (最終確認) レビュー待ち
+- 状態: Phase 0a (上流裏取り・ライセンス実査) の実測結果を反映した改訂版 (v9)。v8 は Codex 敵対的レビュー 7 巡目までを反映したもの
+- v9 の変更点: §4.1 の依存閉包初期値を実測 6 path に修正、閉包導出規則に URL→path 写像を明記、§5 の `mxfile.xsd` / `style-reference.md` への疑義を解消。いずれも `docs/phase0a-upstream-report.md` / `docs/closure-allowlist.md` / `docs/license-ledger.md` が根拠
 - 確定後の置き場所: `93_operation-docs/plan/2026-08-28_etching-drawio.md` (japanese-tech-writing 適用のうえ移設)
 
 ## 1. 目的
@@ -38,7 +39,15 @@
 - 各ファイルの SHA-256 / Git mode / symlink target / path / 対象ディレクトリの tree OID
 - 取得日時 (**pinned SHA が変わったときのみ更新**。定期 verify では触らない)
 
-依存閉包の初期値: `plugins/claude-code/skills/drawio/` 一式 + `shared/xml-reference.md`。閉包は「snapshot 内ファイルが参照する上流 path を追加する」規則で確定し、Phase 0 で上流 repo を直接確認して確定する (「必要に応じ」という曖昧さは残さない)。
+依存閉包の初期値 (v9: Phase 0a の実測で確定。正本は `docs/closure-allowlist.md`):
+
+1. `plugins/claude-code/skills/drawio/SKILL.md` — 閉包の root。上流の当該ディレクトリの中身はこの 1 ファイルのみである
+2. `shared/xml-reference.md` — 上流 `CLAUDE.md` が正本と定義する 2 ファイルの片方
+3. `shared/mermaid-reference.md` — 同じく正本と定義される片方 (v8 まで落ちていた)
+4. 参照解析で導出される `shared/` 配下のファイル。この pinned SHA では `shared/style-reference.md` と `shared/mxfile.xsd` の 2 件が `xml-reference.md` 経由で導出される
+5. `LICENSE` — 参照解析の産物ではなく、Apache-2.0 §4(a) の再頒布義務による固定エントリ
+
+**閉包導出規則 (v9 追記)**: 上流の参照は相対 path ではなく `main` を指す**絶対 URL** (`raw.githubusercontent.com/...` および `github.com/.../blob/...`) である。素直な相対 path 解決だけを実装すると閉包が root 1 ファイルで閉じるため、URL 文字列を上流 path へ写像してから閉包に追加する。`<ref>` は無視し、取得は常に pinned SHA から行う。上流 repo 以外を指す URL は閉包に入れない。**詳細規則 (抽出パターン・不動点の反復・path 消失時の失敗規則・意図的な除外リスト) は `docs/closure-allowlist.md` §2 を正とする。**
 
 ### 4.2 verify と update の分離
 
@@ -49,11 +58,14 @@
 ## 5. ライセンス (v2 major-9 反映)
 
 - root `LICENSE` = MIT (自作部分)。vendor が対象外であることを明記。
-- `references/upstream/` に上流の Apache-2.0 LICENSE と NOTICE (存在すれば) を保持。
+- `references/upstream/` に上流の Apache-2.0 LICENSE と NOTICE (存在すれば) を保持。pinned SHA `14b318b` に NOTICE は存在しないため、この時点では該当なし (将来生えた場合の検知は `propose-upstream-update.sh` が行う)。
 - `THIRD_PARTY_NOTICES.md`: component / source URL / commit SHA / 対象 path / 改変一覧 (原則「改変なし」)。
-- **Phase 0 で全 vendor ファイルの source・license・copyright を実ファイル単位で確定する**。`mxfile.xsd` と `style-reference.md` を含め、出所不明が 1 件でもあれば public 化を止める **release gate** とする (推測での「jgraph 由来なら Apache」判定はしない)。
+- 出所不明が 1 件でもあれば public 化を止める **release gate** は維持する (推測での「jgraph 由来なら Apache」判定はしない)。
+- **v9 更新**: Phase 0a の実査で、閉包 6 ファイルすべての source・license・copyright を実ファイル単位で確定した。v8 が名指しで疑義を挙げていた `mxfile.xsd` と `style-reference.md` は、**いずれも上流 `shared/` の実在ファイルで、閉包規則からも正当に導出される上流由来と確定済み** (Apache-2.0 / Copyright 2025 JGraph Ltd)。出所不明は 0 件。台帳と根拠は `docs/license-ledger.md` を正とする。ただし gate の最終判定は Phase 3a 時点の pinned SHA に対して台帳を再実行して行う。
 
 ## 6. 契約 (contracts)
+
+> Phase 0b で本節と §7 を実装可能な精度へ展開した。確定文書は `contracts/` 配下 (`diagnostics.schema.json` / `exit-codes.md` / `delivery.md` / `profile.schema.json` / `profile.md` / `environment.md`)。両者が食い違った場合は `contracts/` を正とし、PLAN を追随させる。
 
 ### 6.1 診断 JSON contract (v2 major-2 反映) — Phase 0 で確定
 
