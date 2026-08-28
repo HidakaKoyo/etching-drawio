@@ -7,6 +7,7 @@ file stay optional (contracts/environment.md §5).
 """
 
 import os
+import re
 import shutil
 import signal
 import struct
@@ -16,6 +17,7 @@ import zlib
 
 EXPORT_TIMEOUT_SECONDS = 120
 VERSION_TIMEOUT_SECONDS = 20
+VERSION_LINE = re.compile(r"^\d+(\.\d+)+$")
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
 PNG_CHANNELS = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}
@@ -88,8 +90,15 @@ def drawio_version(command):
         )
     except (OSError, subprocess.SubprocessError):
         return "unknown"
-    text = completed.stdout.decode("utf-8", "replace").strip()
-    return text.splitlines()[0] if text else "unknown"
+    text = completed.stdout.decode("utf-8", "replace")
+    # Electron writes its own noise to stderr before answering - on a Linux CI
+    # runner the first line is a dbus complaint. Taking line one would put that
+    # string in the receipt as the version, so pick the line that is a version.
+    for line in text.splitlines():
+        candidate = line.strip()
+        if VERSION_LINE.match(candidate):
+            return candidate
+    return "unknown"
 
 
 def build_argv(command, source, destination, fmt, page, scale, embed_xml):
