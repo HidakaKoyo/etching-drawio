@@ -5,6 +5,8 @@
 
 エンドユーザーに要求する実行時依存を、ここで閉じる。ここに書いていないものは要求しない。
 
+依存の**解決順**は 2 つある。draw.io Desktop (`DRAWIO_CMD`) を CLI が解決する規則は §4.1、`etch` CLI 自体をエージェントが解決する規則は §7 にある。混同しない。
+
 ## 1. 対応 OS
 
 | OS | 位置づけ |
@@ -76,4 +78,27 @@ PNG の chunk 走査と CRC 検証、IDAT の zlib 展開は python3 標準ラ�
 6. **export の実走 (Phase 1d の gate)。** pin した draw.io Desktop で、OS 別の `DRAWIO_CMD` 解決 → 実 export → SVG / PNG / PDF の検証まで、**Ubuntu と macOS の両方で各 1 回以上**通ること。この実走は `python3 tests/smoke/test_real_export.py` (repo root から実行、`-v` で各ケース表示) が担う。draw.io Desktop が解決できない環境では理由を出して skip し exit 0 で終わるため、導入済みの環境で走らせて初めて gate の証拠になる
 7. **納品の実走。** `generations/<id>/` の生成、`current` の切替、receipt の内容が `contracts/delivery.md` §6 を満たすこと
 
-3〜7 のいずれかが落ちたら、その配布方式は受入不合格とする。
+3〜7 のいずれかが落ちたら、その配布方式は受入不合格とする。この手順を機械化したものが `tests/acceptance/test_distribution.py` で、2 方式それぞれをクリーンなディレクトリに設置してから一巡させる。
+
+## 7. `etch` CLI 自体の解決順
+
+§4.1 が定めるのは CLI が draw.io を探す規則である。**CLI 自体を探すのは呼び出す側 (エージェント)** で、その規則をここに置く (Phase 2 までは `skills/etching/SKILL.md` にしか書いておらず、契約として参照できなかった)。
+
+上から順に、最初に見つかった実行可能ファイルを使う。
+
+1. 環境変数 `ETCH_CMD`
+2. `PATH` 上の `etch`
+3. skill ディレクトリから見た相対パス。plugin layout では `../../bin/etch`、standalone bundle では `bin/etch`
+
+`ETCH_CMD` は `DRAWIO_CMD` と同じく**単一の executable path** であって、引数付きのコマンド行ではない。
+
+いずれでも見つからなければ**そこで止まる**。素の `drawio` CLI で代替してはならない。代替すると、検証・世代・receipt という納品規律ごと迂回することになる (`contracts/delivery.md`)。
+
+### 7.1 同梱ファイルの解決
+
+CLI が読む同梱ファイル (`references/upstream/shared/mxfile.xsd`、`vendor.lock`) は、**repo の layout に依存せずに解決する**。探索する skill ディレクトリは次の 2 つで、この順に見て最初に `references/upstream/` を持つものを採る (`lib/etch_paths.py`)。
+
+1. `<install root>/skills/etching` — plugin / repo layout
+2. `<install root>` — standalone bundle (CLI が skill ディレクトリの中にある layout)
+
+`<install root>` は環境変数 `ETCH_ROOT` で上書きできる。未設定なら `bin/etch` が自身の親ディレクトリを渡す。**どちらの候補にも無い場合、install root の外を探しにいかない。** 同梱 XSD が無い install は「XSD 検証だけできない install」として扱い、`xml/schema-xsd` を optional の skipped にする (exit code は変えない)。

@@ -15,9 +15,9 @@ description: Always use when the user asks to create, generate, draw, edit, fix,
 
 1. 環境変数 `ETCH_CMD`
 2. `PATH` 上の `etch`
-3. この SKILL.md から見た `../../bin/etch`
+3. この SKILL.md から見た相対パス。plugin として入っているなら `../../bin/etch`、skill 単体の bundle なら `bin/etch`
 
-見つからなければ、その旨を伝えて止まる。代わりに素の `drawio` を使ってはいけない。
+見つからなければ、その旨を伝えて止まる。代わりに素の `drawio` を使ってはいけない。正本は `contracts/environment.md` §7 で、その平易版が `references/environment.md` §1.1 にある。
 
 環境固有の規約 (置き場所、埋め込みの作法、proposal mode の既定) は profile にある。`references/environment.md` の解決規則で `.etching/profile.md` を探し、あれば**起案前に読む**。無ければ host-neutral な既定で進める。
 

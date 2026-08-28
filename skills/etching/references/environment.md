@@ -18,6 +18,20 @@
 
 対応 OS は macOS と Ubuntu LTS。その他の Linux は best effort、Windows は WSL 上の Ubuntu として扱う。
 
+## 1.1 `etch` CLI の解決順
+
+正本は `contracts/environment.md` §7。上から順に、最初に見つかった実行可能ファイルを使う。
+
+1. 環境変数 `ETCH_CMD`
+2. `PATH` 上の `etch`
+3. skill ディレクトリからの相対パス。plugin layout なら `../../bin/etch`、standalone bundle なら `bin/etch`
+
+`ETCH_CMD` は単一の実行ファイルのパスであって、引数付きのコマンド行ではない。
+
+見つからなければ**そこで止まる**。素の `drawio` で代替しない。代替すると検証・世代・receipt の規律ごと迂回することになる。
+
+CLI が読む同梱ファイル (`references/upstream/shared/mxfile.xsd`、`vendor.lock`) は、plugin layout でも standalone bundle でも install ディレクトリの中だけで解決される。同梱 XSD を持たない install では `xml/schema-xsd` が optional の skip になるだけで、exit code は変わらない。
+
 ## 2. draw.io Desktop の解決順
 
 上から順に、最初に見つかった実行可能ファイルを使う。
