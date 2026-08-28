@@ -16,6 +16,8 @@ import re
 import subprocess
 import xml.etree.ElementTree as ElementTree
 
+import etch_paths
+
 MAX_BYTES = 8 * 1024 * 1024
 MAX_NODES = 200000
 MAX_DEPTH = 100
@@ -256,10 +258,10 @@ class Validator(object):
 
     def check_xsd(self, path):
         """Optional: full XSD validation, which needs xmllint (environment.md §5)."""
-        xsd = os.path.join(
-            self.root_dir, "skills", "etching", "references", "upstream", "shared", "mxfile.xsd"
+        xsd = etch_paths.bundled(
+            self.root_dir, "references", "upstream", "shared", "mxfile.xsd"
         )
-        if not os.path.isfile(xsd):
+        if xsd is None:
             self.report.skipped(
                 "xml/schema-xsd",
                 waiver={"reason": "bundled mxfile.xsd not found", "authorizedBy": "etch"},

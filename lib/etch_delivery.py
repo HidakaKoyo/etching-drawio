@@ -18,6 +18,7 @@ import os
 import shutil
 import time
 
+import etch_paths
 from etch_report import UsageError, sha256_file
 
 
@@ -153,10 +154,10 @@ def build_receipt(
 
 
 def vendor_lock_record(root_dir):
-    path = os.path.join(root_dir, "skills", "etching", "vendor.lock")
-    if not os.path.isfile(path):
+    path = etch_paths.bundled(root_dir, "vendor.lock")
+    if path is None:
         return None
-    return {"path": os.path.relpath(path, root_dir), "sha256": sha256_file(path)}
+    return {"path": etch_paths.display_path(path, root_dir), "sha256": sha256_file(path)}
 
 
 # ---------------------------------------------------------------------------

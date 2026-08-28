@@ -28,6 +28,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 import etch_delivery  # noqa: E402
 import etch_export  # noqa: E402
+import etch_paths  # noqa: E402
 import etch_profile  # noqa: E402
 import etch_validate  # noqa: E402
 from etch_report import Interrupted, Report, UsageError, sha256_file  # noqa: E402
@@ -366,9 +367,7 @@ def install_signal_handlers():
 
 
 def main(argv):
-    root_dir = os.environ.get(
-        "ETCH_ROOT", os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    )
+    root_dir = etch_paths.default_root()
     report = Report(os.environ.get("ETCH_VERSION", "0.0.0"))
     install_signal_handlers()
     try:
