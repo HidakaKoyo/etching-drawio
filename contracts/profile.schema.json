@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/HidakaKoyo/etching-drawio/contracts/profile.schema.json",
+  "title": "etching host profile (machine-readable part)",
+  "description": "Schema for .etching/profile.json. v1 is deliberately minimal: only keys the CLI actually branches on. Unknown keys are rejected (fail-closed). Agent-facing conventions live in .etching/profile.md, which the CLI never parses.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version"],
+  "properties": {
+    "version": {
+      "const": 1,
+      "description": "Profile format version. A new key set that changes CLI behaviour bumps this."
+    },
+    "proposal_mode": {
+      "type": "boolean",
+      "default": false,
+      "description": "When true, the CLI never replaces the source .drawio and never moves the current pointer; it writes <name>.agent-proposal.drawio plus a generation. See contracts/delivery.md section 3."
+    }
+  }
+}

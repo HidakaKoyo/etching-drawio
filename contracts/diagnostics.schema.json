@@ -1,0 +1,199 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/HidakaKoyo/etching-drawio/contracts/diagnostics.schema.json",
+  "title": "etch diagnostics document",
+  "description": "Machine-readable result document written to stdout by the etch CLI. stdout carries this JSON and nothing else; human-readable logs go to stderr. Normative prose: docs/PLAN.md section 6.1.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "toolVersion", "status", "checks", "diagnostics", "artifacts"],
+  "properties": {
+    "schemaVersion": {
+      "$ref": "#/$defs/semver",
+      "description": "Version of this schema. Additive change bumps minor; field removal or meaning change bumps major."
+    },
+    "toolVersion": {
+      "$ref": "#/$defs/semver",
+      "description": "etch CLI version, read from the VERSION file inside the skill closure."
+    },
+    "status": {
+      "enum": ["passed", "failed", "skipped"],
+      "description": "Aggregate outcome. Constrained against checks[] by the allOf rules below."
+    },
+    "checks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/check" }
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/diagnostic" }
+    },
+    "artifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/artifact" }
+    }
+  },
+  "allOf": [
+    {
+      "description": "Aggregation rule 1: status skipped means no deliverable was processed at all, so there are no checks and no artifacts.",
+      "if": {
+        "type": "object",
+        "required": ["status"],
+        "properties": { "status": { "const": "skipped" } }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "checks": { "maxItems": 0 },
+          "artifacts": { "maxItems": 0 }
+        }
+      }
+    },
+    {
+      "description": "Aggregation rule 2: status failed requires at least one required check that is failed or skipped.",
+      "if": {
+        "type": "object",
+        "required": ["status"],
+        "properties": { "status": { "const": "failed" } }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "checks": { "contains": { "$ref": "#/$defs/unmetRequiredCheck" } }
+        }
+      }
+    },
+    {
+      "description": "Aggregation rule 3: status passed requires at least one check and no unmet required check. Failed or skipped optional checks do not change the aggregate.",
+      "if": {
+        "type": "object",
+        "required": ["status"],
+        "properties": { "status": { "const": "passed" } }
+      },
+      "then": {
+        "type": "object",
+        "properties": {
+          "checks": {
+            "minItems": 1,
+            "not": { "contains": { "$ref": "#/$defs/unmetRequiredCheck" } }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "semver": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "checkId": {
+      "type": "string",
+      "description": "Namespaced check identifier, same grammar as diagnosticCode.",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*(/[a-z][a-z0-9]*(-[a-z0-9]+)*)+$"
+    },
+    "diagnosticCode": {
+      "type": "string",
+      "description": "Namespaced diagnostic code, lowercase kebab segments joined by '/'. Namespaces in v1: xml/*, style/*, export/*, delivery/*, input/*, dependency/*. The namespace composition/* is reserved for the v2 post-render geometry checks (PLAN section 11) and MUST NOT be emitted by v1.",
+      "pattern": "^[a-z][a-z0-9]*(-[a-z0-9]+)*(/[a-z][a-z0-9]*(-[a-z0-9]+)*)+$",
+      "not": { "pattern": "^composition/" }
+    },
+    "check": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "required", "status"],
+      "properties": {
+        "id": { "$ref": "#/$defs/checkId" },
+        "required": { "type": "boolean" },
+        "status": { "enum": ["passed", "failed", "skipped"] },
+        "waiver": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["reason", "authorizedBy"],
+          "properties": {
+            "reason": { "type": "string", "minLength": 1 },
+            "authorizedBy": { "type": "string", "minLength": 1 }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "description": "v1: a required check cannot carry a waiver. Allowing it later means enumerating waivable check ids and defining the authorization path, which is a schema major change.",
+          "if": {
+            "type": "object",
+            "required": ["required"],
+            "properties": { "required": { "const": true } }
+          },
+          "then": {
+            "type": "object",
+            "not": { "required": ["waiver"] }
+          }
+        }
+      ]
+    },
+    "unmetRequiredCheck": {
+      "type": "object",
+      "required": ["required", "status"],
+      "properties": {
+        "required": { "const": true },
+        "status": { "enum": ["failed", "skipped"] }
+      }
+    },
+    "diagnostic": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "severity", "message", "subject"],
+      "properties": {
+        "code": { "$ref": "#/$defs/diagnosticCode" },
+        "severity": { "enum": ["error", "warning"] },
+        "message": { "type": "string", "minLength": 1 },
+        "subject": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["file"],
+          "properties": {
+            "file": { "type": "string", "minLength": 1 },
+            "xpath": { "type": "string" },
+            "cellId": { "type": "string" },
+            "line": { "type": "integer", "minimum": 1 }
+          }
+        },
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "expected": {},
+            "actual": {},
+            "params": { "type": "object" }
+          }
+        },
+        "supportedFixes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["fixId", "target", "precondition", "description"],
+            "properties": {
+              "fixId": { "$ref": "#/$defs/checkId" },
+              "target": { "type": "string", "minLength": 1 },
+              "precondition": { "type": "string" },
+              "description": { "type": "string", "minLength": 1 }
+            }
+          }
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "kind"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "sha256": { "$ref": "#/$defs/sha256" },
+        "kind": { "enum": ["drawio", "svg", "png", "pdf"] }
+      }
+    }
+  }
+}
