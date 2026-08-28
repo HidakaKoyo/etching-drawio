@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# etch - deterministic validation, export and delivery for .drawio sources.
+#
+# This entry point stays thin on purpose: it resolves python3 and hands the
+# argument vector to lib/etch_main.py. Everything else lives in Python.
+#
+# Runtime: bash 3.2 compatible, python3 >= 3.9, standard library only.
+# Contracts: contracts/exit-codes.md, contracts/environment.md
+set -eu
+
+program="${0##*/}"
+case "$0" in
+  */*) here="${0%/*}" ;;
+  *)   here="." ;;
+esac
+root_dir="$(cd "$here/.." && pwd)"
+lib_dir="$root_dir/lib"
+
+# The version is the one the release build writes into the distributed closure.
+tool_version="0.0.0"
+if [ -r "$root_dir/VERSION" ]; then
+  IFS= read -r tool_version < "$root_dir/VERSION" || tool_version="0.0.0"
+fi
+
+# exit 5 has to carry a diagnostics document, but the document is normally built
+# by Python. When python3 itself is the missing dependency there is nothing left
+# to build it with, so this one document is written by hand.
+missing_python() {
+  printf '%s: %s\n' "$program" "$1" >&2
+  printf '{"schemaVersion":"1.0.0","toolVersion":"%s","status":"failed",' "$tool_version"
+  printf '"checks":[{"id":"dependency/python3","required":true,"status":"failed"}],'
+  printf '"diagnostics":[{"code":"dependency/python3","severity":"error","message":"%s",' "$1"
+  printf '"subject":{"file":"(environment)"}}],"artifacts":[]}\n'
+  exit 5
+}
+
+if ! command -v python3 >/dev/null 2>&1; then
+  missing_python "python3 was not found on PATH"
+fi
+if ! python3 -c 'import sys; sys.exit(0 if sys.version_info >= (3, 9) else 1)' >/dev/null 2>&1; then
+  missing_python "python3 is older than the required 3.9"
+fi
+
+ETCH_ROOT="$root_dir" ETCH_VERSION="$tool_version" exec python3 "$lib_dir/etch_main.py" "$@"
