@@ -13,6 +13,7 @@ installed. python3 >= 3.9, standard library only (contracts/environment.md).
     python3 tests/smoke/test_real_export.py [-v]
 """
 
+import hashlib
 import json
 import os
 import shutil
@@ -23,6 +24,14 @@ import tempfile
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 ETCH = os.environ.get("ETCH_CLI", os.path.join(REPO_ROOT, "bin", "etch"))
 FIXTURE = os.path.join(REPO_ROOT, "tests", "fixtures", "smoke.drawio")
+VENDOR_LOCK = os.path.join(REPO_ROOT, "skills", "etching", "vendor.lock")
+VERSION_FILE = os.path.join(REPO_ROOT, "skills", "etching", "VERSION")
+
+# The draw.io Desktop this gate was passed against. CI pins one build and
+# passes it in; where the receipt records anything else, the evidence is about
+# a different exporter than the one the gate names, so the run fails rather
+# than quietly reporting on whatever happened to be installed.
+EXPECTED_DRAWIO_VERSION = os.environ.get("EXPECT_DRAWIO_VERSION")
 
 sys.path.insert(0, os.path.join(REPO_ROOT, "lib"))
 import etch_export  # noqa: E402
@@ -136,6 +145,75 @@ def artifact_paths(document):
     return [artifact["path"] for artifact in document.get("artifacts", [])]
 
 
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(65536), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def read_version_file():
+    try:
+        with open(VERSION_FILE, encoding="utf-8") as handle:
+            return handle.read().strip()
+    except OSError:
+        return None
+
+
+def assert_receipt(receipt, generation, source_path, label):
+    """Every field of contracts/delivery.md §6, checked against what is on disk.
+
+    A receipt is the only durable evidence a delivery leaves behind, so the
+    smoke test reads it the way a later `etch verify` or an auditor would:
+    recomputing the hashes rather than trusting that they were written.
+    """
+    version = receipt.get("drawio", {}).get("version")
+    if not version or version == "unknown":
+        raise AssertionError(
+            "%s: the receipt records the draw.io version as %r" % (label, version)
+        )
+    if EXPECTED_DRAWIO_VERSION and version != EXPECTED_DRAWIO_VERSION:
+        raise AssertionError(
+            "%s: the receipt records draw.io %r, but this run pins %r"
+            % (label, version, EXPECTED_DRAWIO_VERSION)
+        )
+
+    expected_tool = read_version_file()
+    if expected_tool and receipt.get("toolVersion") != expected_tool:
+        raise AssertionError(
+            "%s: the receipt records toolVersion %r, skills/etching/VERSION says %r"
+            % (label, receipt.get("toolVersion"), expected_tool)
+        )
+
+    source = receipt.get("source", {})
+    if source.get("sha256") != sha256_file(source_path):
+        raise AssertionError(
+            "%s: the receipt's source hash is not the hash of %s" % (label, source_path)
+        )
+    if source.get("role") != "master":
+        raise AssertionError("%s: source role is %r" % (label, source.get("role")))
+
+    artifacts = receipt.get("artifacts")
+    if not artifacts:
+        raise AssertionError("%s: the receipt records no artifacts" % label)
+    for artifact in artifacts:
+        path = artifact.get("path")
+        if not os.path.isabs(path):
+            path = os.path.join(generation, path)
+        if not os.path.isfile(path):
+            raise AssertionError("%s: receipt names a missing artifact %s" % (label, path))
+        if artifact.get("sha256") != sha256_file(path):
+            raise AssertionError("%s: %s does not hash to what the receipt says" % (label, path))
+
+    lock = receipt.get("vendorLock")
+    if not lock or lock.get("sha256") != sha256_file(VENDOR_LOCK):
+        raise AssertionError("%s: the receipt's vendor.lock hash is wrong or absent" % label)
+
+    if not receipt.get("checks"):
+        raise AssertionError("%s: the receipt records no checks" % label)
+
+
 # ---------------------------------------------------------------------------
 # cases
 # ---------------------------------------------------------------------------
@@ -185,13 +263,7 @@ def case_deliver_and_verify(workspace):
     receipt_path = os.path.join(generation, "receipt.json")
     with open(receipt_path, encoding="utf-8") as handle:
         receipt = json.load(handle)
-    version = receipt.get("drawio", {}).get("version")
-    if not version or version == "unknown":
-        raise AssertionError(
-            "%s: the receipt records the draw.io version as %r" % (label, version)
-        )
-    if not receipt.get("artifacts"):
-        raise AssertionError("%s: the receipt records no artifacts" % label)
+    assert_receipt(receipt, generation, workspace.source, label)
 
     verified = assert_passed(
         workspace.run(["verify", "--output-root", workspace.output_root]), "verify"
@@ -249,7 +321,19 @@ def main():
             "DRAWIO_CMD all came up empty); real export cannot be exercised here"
         )
         return 0
-    print("   draw.io: %s (%s)" % (command, etch_export.drawio_version(command)))
+    installed = etch_export.drawio_version(command)
+    print("   draw.io: %s (%s)" % (command, installed))
+    if EXPECTED_DRAWIO_VERSION:
+        print("   pinned:  %s" % EXPECTED_DRAWIO_VERSION)
+        if installed != EXPECTED_DRAWIO_VERSION:
+            # Running the suite against a different build would produce a green
+            # result about an exporter the gate does not name.
+            print(
+                "  FAIL the installed draw.io reports %r, but this run pins %r"
+                % (installed, EXPECTED_DRAWIO_VERSION)
+            )
+            print("  0 passed, 1 failed, 0 skipped")
+            return 1
 
     on_path = shutil.which("drawio")
     fallback = fallback_candidate()
