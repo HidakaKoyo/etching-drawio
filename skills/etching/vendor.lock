@@ -1,0 +1,75 @@
+{
+  "lockVersion": 1,
+  "upstream": {
+    "repo": "https://github.com/jgraph/drawio-mcp",
+    "commit": "14b318b19cc37b159f841227b9d11fbd18ce18ea",
+    "fetchedAt": "2026-08-28T10:22:53Z"
+  },
+  "snapshotRoot": "references/upstream",
+  "trees": [
+    {
+      "path": "plugins/claude-code/skills/drawio",
+      "oid": "f05186e51e58bc9a868c6b2c5114241f7fbc928a"
+    },
+    {
+      "path": "shared",
+      "oid": "57aaeb2c9402f7a134f5133b1014bcc1c528df0b"
+    }
+  ],
+  "files": [
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "symlinkTarget": null,
+      "size": 10762,
+      "gitBlobSha1": "f44b900b6208bbff3463cea88049e47d4bdcfd7e",
+      "sha256": "006e61a1b8c97620d75ceacc283de7a363d78da7da9a5b92203324c40feb7232",
+      "reason": "Apache-2.0 4(a) redistribution requirement (PLAN 5)"
+    },
+    {
+      "path": "plugins/claude-code/skills/drawio/SKILL.md",
+      "mode": "100644",
+      "symlinkTarget": null,
+      "size": 20431,
+      "gitBlobSha1": "54ead5150f790625fcccde2e93af0fe114c5aa14",
+      "sha256": "4db0d9428e855b602b5afd161929dc6e35cb28678d830cfafd939f0a71bba5f5",
+      "reason": "closure root"
+    },
+    {
+      "path": "shared/mermaid-reference.md",
+      "mode": "100644",
+      "symlinkTarget": null,
+      "size": 12806,
+      "gitBlobSha1": "25bb420f2f70a1f6f1cf59c90d958af1c53e3117",
+      "sha256": "977a11dd6c0e37922eb3615f50f41c0b8f2eeb732dc6905b1b8546ca829cbbf0",
+      "reason": "referenced by plugins/claude-code/skills/drawio/SKILL.md"
+    },
+    {
+      "path": "shared/mxfile.xsd",
+      "mode": "100644",
+      "symlinkTarget": null,
+      "size": 29499,
+      "gitBlobSha1": "53277111bc48ad6cccd259ad95a244eb9701e261",
+      "sha256": "905db85d4e8ebec0e91518cdd62982e0afb3f09ebdcaf9e6b1952957a606639a",
+      "reason": "referenced by shared/xml-reference.md"
+    },
+    {
+      "path": "shared/style-reference.md",
+      "mode": "100644",
+      "symlinkTarget": null,
+      "size": 37100,
+      "gitBlobSha1": "d90ab70ff019c0909bda671f5fbd99850b4367c9",
+      "sha256": "094df96981f85adb3124f40fd5ef02dc02eade1615ed6ffe4631f0e123a6366d",
+      "reason": "referenced by shared/xml-reference.md"
+    },
+    {
+      "path": "shared/xml-reference.md",
+      "mode": "100644",
+      "symlinkTarget": null,
+      "size": 33402,
+      "gitBlobSha1": "d2940943111c0b5b1973e430fe6a39cff3f37fa1",
+      "sha256": "3f7409f925ba35115ef7b644279c44b34f9fbf5b8ab539844368855db113d8aa",
+      "reason": "referenced by plugins/claude-code/skills/drawio/SKILL.md"
+    }
+  ]
+}
