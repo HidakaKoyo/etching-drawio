@@ -39,8 +39,8 @@ exit code の確定順を読むうえで、この順序が前提になる。
 | I-10 | style / image 属性中の http・file URL を外部参照として警告し、`--allow-external` で抑止できる | 0 + 警告 | INV-10 |
 | I-11 | 入力ファイル自身を出力先に指定することを拒否する (実体パスと `samefile` の両方で判定) | 4 | INV-11 |
 | I-12 | 引数不備・未知オプション・不正な倍率やページ番号・存在しない入力・存在しない出力先ディレクトリ・入力 2 件指定を拒否する | 4 | INV-12 |
-| I-13 | 出力ごとの lock が排他である。取得できなければ export せず、他プロセスの lock を消さない | 2 | INV-13 |
-| I-14 | 正常終了時に自分の lock を解放し、検証済み出力を公開する | 0 | INV-14 |
+| I-13 | 出力ごとの lock が排他である。取得できなければ export せず、他プロセスの lock を消さない | 2 | INV-13 (**Phase 1b で撤回**) |
+| I-14 | 正常終了時に自分の lock を解放し、検証済み出力を公開する | 0 | INV-14 (**Phase 1b で撤回**) |
 | I-15 | export 中に入力が書き換わったら競合として扱い、出力を公開しない | 3 | INV-15 |
 | I-16 | 競合で終了しても出力先に一時ディレクトリを残さない | 3 | INV-16 |
 | I-17 | 出力の形式検証に落ちた成果物を公開しない | 2 | INV-17 |
@@ -49,6 +49,15 @@ exit code の確定順を読むうえで、この順序が前提になる。
 
 I-15 から I-18 に共通する上位の invariant は「**検証を通っていない成果物を公開しない**」である。
 新 CLI では公開の単位が世代ディレクトリと `current` pointer に変わるが (MIG-08)、この性質そのものは変わらない。
+
+### 2.2 Phase 1b で撤回した invariant (I-13 / I-14)
+
+lock 廃止 (`contracts/delivery.md` §2.1) により、この 2 件は新 CLI に対しては主張できなくなった。撤回は移植の都合ではなく contract 決定の結果であり、代替は次のとおり。
+
+- I-13 (lock 排他) → **MIG-13**。lock を一切見ず、残存 `<出力>.lock` があっても納品を妨げないことを確認する。並行納品の競合検知は hash handoff (exit 3) が担う
+- I-14 (lock 解放 + 公開) → **MIG-08 / MIG-09**。世代ディレクトリの生成と `current` の切替、receipt の内容で置き換える
+
+同じ理由で SMOKE-01〜03 も新 CLI では skip する。3 件とも「`-o` の path に成果物が現れること」と「stdout が公開先 path であること」を見ており、それぞれ MIG-08 と MIG-06 が意図的に置き換えた点である。**新 CLI の実 export 検証は Phase 1d の gate が正本**とする (Phase 1b の実装中に macOS + draw.io Desktop 31.3.2 で svg / png / pdf / embed-xml の deliver が通ることは手で確認したが、これは自動テストではない)。
 
 ### 2.1 CLI 依存の分離
 
@@ -82,22 +91,23 @@ Phase 1b で `ETCH_CLI` を新 CLI に向け、`argv_for()` を埋めて有効�
 | MIG-10 | 納品 | proposal mode なし | `proposal_mode` では正本を触らず `*.agent-proposal.drawio` を並置し `current` を動かさない | delivery.md §3 |
 | MIG-11 | 出力検証 | PNG は `file` の magic + `sips` の画素数 | `sips` 廃止。chunk 全走査 + CRC + IDAT を zlib 展開して IHDR と整合確認 | PLAN §7.2 / environment.md §5 |
 | MIG-12 | 任意コマンド | `xmllint` `file` は必須 (欠落は exit 4) | 任意。欠落は該当 check を skipped + warning にし、exit code を変えない | environment.md §5 |
+| MIG-13 | 納品 | 出力ごとの `<出力>.lock` ディレクトリ。二重実行は exit 2 | lock 機構なし。残存 lock を参照せず納品する | delivery.md §2.1 (Phase 1b 追加) |
 
 exit 1 と exit 3 の意味は旧新で変わらない。
 ただし exit 3 の発火機構は「export 前後の入力 hash 比較」から「`H0` / `Hfinal` の 2 点照合 (delivery.md §2 の S2 と S6)」に置き換わる。
 コードとしては invariant、機構としては migration である。
 
-## 4. contract が未確定で、Phase 1b までに決めるべき点
+## 4. Phase 1a で未決だった 5 点 (Phase 1b 冒頭で決着)
 
-`test_migration.py` の `OPEN_QUESTIONS` と同一内容。推測で新期待値を書かず、未決として残した。
+`test_migration.py` の `RESOLVED_QUESTIONS` と同一内容。決定は司令塔が行い、contract に反映済み。
 
-| # | 論点 | 現行の挙動 | 欠けているもの |
+| # | 論点 | 決定 | 反映先 |
 |---|---|---|---|
-| OPEN-01 | 出力 lock の競合 | 同一出力への二重実行は **exit 2** | `contracts/exit-codes.md` に lock 競合の項が無い。世代ディレクトリ方式では出力単位の lock 自体が不要になる可能性もある |
-| OPEN-02 | signal 終了 | HUP/INT/TERM で export の process group を止め **exit 130** | 130 が exit code 表に無い。契約外コードとして明記するか、signal 時の報告を定義する必要がある |
-| OPEN-03 | lint 自体の異常終了 | 想定外の linter 終了状態を **exit 4** (usage error) にしている | 内部異常は usage error ではない。「ツール自身が壊れた」に対応する code が無い |
-| OPEN-04 | 外部リソース参照 | style / image の URL を警告。`--allow-external` で抑止 | 診断 code の namespace が未予約。warning 診断・optional check・ポリシー下の error のどれにするか未決 |
-| OPEN-05 | 非圧縮強制ポリシーの指定場所 | 該当なし (常に警告) | MIG-03 はポリシー ON を前提にしている。`profile.schema.json` は `version` と `proposal_mode` しか許可しておらず、ポリシーを書く場所が無い |
+| OPEN-01 | 出力 lock の競合 | **lock 機構を廃止**。世代は出力 path を共有せず、共有可変資源は正本と `current` だけ。並行納品の競合は hash handoff に統合し、負けた側が exit 3 で止まる | delivery.md §2.1 / MIG-13 |
+| OPEN-02 | signal 終了 | **exit 130 を予約 code として明記**。診断 JSON は出さない (途中の `checks[]` は failed と区別できないため) | exit-codes.md §1, §2 |
+| OPEN-03 | lint 自体の異常終了 | **exit 6 = internal error を新設**。診断はベストエフォートで `internal/*` | exit-codes.md §2 / diagnostics.schema.json |
+| OPEN-04 | 外部リソース参照 | **`security/*` namespace**。`security/external-ref` は warning 診断、`security/no-external-ref` は optional check なので exit code は変わらない。`--allow-external` は waiver 付き skip | exit-codes.md §2 exit 0 / diagnostics.schema.json |
+| OPEN-05 | 非圧縮強制ポリシーの指定場所 | **v1 は常時 ON で profile キーを持たない**。どのポリシーで検証したかを receipt で確認する必要をなくす | profile.md §3, §4 |
 
 ## 5. 移植時に持ち込まない実装詳細
 
@@ -110,9 +120,16 @@ invariant ではあるが、実装手段としては継承しないもの。
 ## 6. 実行方法
 
 ```
-python3 tests/characterization/test_invariants.py -v   # 現行 wrapper に対する invariant
-python3 tests/characterization/test_migration.py       # 新期待値の一覧 (Phase 1a では全 skip)
+python3 tests/characterization/test_invariants.py -v                     # 旧 wrapper に対する invariant
+ETCH_CLI=$PWD/bin/etch python3 tests/characterization/test_invariants.py # 同じ invariant を新 CLI に対して
+ETCH_CLI=$PWD/bin/etch python3 tests/characterization/test_migration.py  # 新期待値 (Phase 1a では全 skip)
 ```
 
-`LEGACY_WRAPPER=<path>` で検証対象を差し替えられる。
-既定値は vault の `bin/drawio-verify-export`。
+`LEGACY_WRAPPER=<path>` で旧 wrapper 側の対象を差し替えられる。既定値は vault の `bin/drawio-verify-export`。
+
+`ETCH_CLI` を渡すと invariant suite は新 CLI に切り替わる。テスト本体の主張は変えず、差分は harness の 2 つの adapter が吸収する。
+
+- `legacy_to_etch()`: 旧 argv を etch の subcommand へ機械的に翻訳する (`--check-only` → `validate`、それ以外 → `deliver`、`-o` → `--output-root`)
+- `NEEDLE_MAP`: 旧 wrapper が日本語散文で出していた指摘を、同じ条件を運ぶ診断 code の存在確認に読み替える (usage error は JSON を出さないので stderr の英文を見る)
+
+加えて新 CLI モードでは、stdout に出た診断 JSON を毎回 `contracts/diagnostics.schema.json` で検証する (`harness.schema_check`)。
