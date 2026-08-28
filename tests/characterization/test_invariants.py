@@ -285,9 +285,36 @@ def test_smoke_embed_xml_svg(w):
 
 # ---------------------------------------------------------------------------
 
+# Two invariants were retired by a contract decision rather than by the port.
+# contracts/delivery.md §2.1 removes the output lock: the generation layout
+# leaves only the source file and the current pointer shared, and both are
+# guarded by the hash handoff. INV-13 asserts the lock excludes a second
+# process, INV-14 asserts a successful run releases it and publishes to the -o
+# path. Neither statement can be made about a CLI that has no lock and
+# publishes into a generation, so they are skipped for the etch CLI and their
+# replacement is asserted by MIG-08, MIG-09 and MIG-13.
+#
+# The three smoke cases are skipped for the same kind of reason: they assert
+# that the artifact appears at the -o path and that stdout is that path, which
+# MIG-06 and MIG-08 deliberately replace. Real export against the new
+# publication layout is the gate of Phase 1d (docs/PLAN.md §10).
+SUPERSEDED_BY_CONTRACT = {
+    "INV-13 output lock is exclusive": "no output lock in v1 (delivery.md §2.1); see MIG-13",
+    "INV-14 lock is released on success": "publication moved to generations; see MIG-08/09",
+    "SMOKE-01 real svg export": "asserts the legacy -o publication and stdout path; Phase 1d",
+    "SMOKE-02 real png export": "asserts the legacy -o publication; Phase 1d",
+    "SMOKE-03 real svg export with embedded xml": "asserts the legacy -o publication; Phase 1d",
+}
+
+
 def build_cases():
-    missing = h.missing_commands(["xmllint", "shasum", "file"])
-    base_skip = "requires %s" % ", ".join(missing) if missing else None
+    if h.NEW_CLI:
+        # xmllint, file and shasum are optional for the etch CLI, so their
+        # absence no longer decides whether a case can run at all.
+        base_skip = None
+    else:
+        missing = h.missing_commands(["xmllint", "shasum", "file"])
+        base_skip = "requires %s" % ", ".join(missing) if missing else None
     smoke_skip = base_skip or (None if h.real_drawio_present() else "requires the draw.io CLI")
 
     invariants = [
@@ -315,18 +342,38 @@ def build_cases():
         ("SMOKE-02 real png export", test_smoke_png_export),
         ("SMOKE-03 real svg export with embedded xml", test_smoke_embed_xml_svg),
     ]
+    def skip_for(label):
+        if h.NEW_CLI and label in SUPERSEDED_BY_CONTRACT:
+            return SUPERSEDED_BY_CONTRACT[label]
+        return base_skip
+
     return (
-        [(label, base_skip, function) for label, function in invariants]
-        + [(label, smoke_skip, function) for label, function in smokes]
+        [(label, skip_for(label), function) for label, function in invariants]
+        + [
+            (label, SUPERSEDED_BY_CONTRACT[label] if h.NEW_CLI else smoke_skip, function)
+            for label, function in smokes
+        ]
     )
 
 
+def select_subject():
+    """Phase 1b: ETCH_CLI points the same invariants at the new CLI."""
+    new_cli = os.environ.get("ETCH_CLI")
+    if not new_cli:
+        return
+    h.LEGACY_WRAPPER = new_cli
+    h.NEW_CLI = True
+    h.ARGV_ADAPTER = h.legacy_to_etch
+
+
 def main():
+    select_subject()
     failures, _, _ = h.run_suite("characterization: invariants", build_cases(), h.verbose_flag())
     if failures:
         print("\nFAILED: %d case(s)" % failures)
         return 1
-    print("\nOK: the legacy wrapper still behaves as characterized")
+    subject = "the etch CLI" if h.NEW_CLI else "the legacy wrapper"
+    print("\nOK: %s still behaves as characterized" % subject)
     return 0
 
 
