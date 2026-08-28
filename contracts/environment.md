@@ -73,7 +73,7 @@ PNG の chunk 走査と CRC 検証、IDAT の zlib 展開は python3 標準ラ�
 3. **閉包の自己完結を確認する。** インストールしたディレクトリの外を参照していないこと。sibling 依存が無いこと
 4. **依存欠落の挙動を確認する。** `DRAWIO_CMD` を存在しない path に設定して実行し、exit 5 と `dependency/drawio` の診断が出ること。python3 を PATH から外して実行し、exit 5 と `dependency/python3` が出ること
 5. **validation の実走。** 既知の不正な `.drawio` を検証し、期待した診断 code と exit 1 が出ること
-6. **export の実走 (Phase 1d の gate)。** pin した draw.io Desktop で、OS 別の `DRAWIO_CMD` 解決 → 実 export → SVG / PNG / PDF の検証まで、**Ubuntu と macOS の両方で各 1 回以上**通ること
+6. **export の実走 (Phase 1d の gate)。** pin した draw.io Desktop で、OS 別の `DRAWIO_CMD` 解決 → 実 export → SVG / PNG / PDF の検証まで、**Ubuntu と macOS の両方で各 1 回以上**通ること。この実走は `python3 tests/smoke/test_real_export.py` (repo root から実行、`-v` で各ケース表示) が担う。draw.io Desktop が解決できない環境では理由を出して skip し exit 0 で終わるため、導入済みの環境で走らせて初めて gate の証拠になる
 7. **納品の実走。** `generations/<id>/` の生成、`current` の切替、receipt の内容が `contracts/delivery.md` §6 を満たすこと
 
 3〜7 のいずれかが落ちたら、その配布方式は受入不合格とする。

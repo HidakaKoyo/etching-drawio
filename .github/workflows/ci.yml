@@ -24,9 +24,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # contracts/environment.md §3 declares 3.9 as the floor, so one leg of the
+      # matrix runs on exactly 3.9 to keep the claim honest. macOS keeps the
+      # runner's own python3, which is well above the floor.
+      - name: Pin python to the declared floor
+        if: runner.os == 'Linux'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.9'
+
       # contracts/environment.md §3: python3 >= 3.9, standard library only.
-      # The runner image's own python3 is used on purpose - no pip, no uv, so a
-      # dependency that crept into the tool would fail here rather than pass.
+      # No pip, no uv, so a dependency that crept into the tool would fail here
+      # rather than pass.
       - name: Report the runtime
         run: |
           python3 --version
