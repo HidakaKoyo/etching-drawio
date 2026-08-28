@@ -13,6 +13,11 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # The one draw.io Desktop the smoke job is allowed to see. Pinned so that an
+  # upstream release cannot change what the Phase 1d gate was passed against.
+  DRAWIO_VERSION: 31.3.2
+
 jobs:
   test:
     name: test (${{ matrix.os }})
@@ -60,6 +65,59 @@ jobs:
         env:
           ETCH_CLI: ${{ github.workspace }}/bin/etch
         run: python3 tests/characterization/test_migration.py
+
+  # Everywhere else draw.io is a bash stub. Here the real Desktop build runs, so
+  # this job is the only evidence that export works at all; a failure here is a
+  # CI failure (contracts/environment.md §6 step 6). It does not depend on the
+  # test job: the two answer different questions and should fail separately.
+  smoke:
+    name: smoke (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      # The .deb lands drawio on PATH *and* at /usr/bin/drawio, so both the PATH
+      # branch and the Linux-defaults branch of the resolution order are real
+      # here. xvfb is the virtual display of contracts/environment.md §4.2.
+      - name: Install draw.io Desktop (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          curl -fsSL --retry 3 -o /tmp/drawio.deb \
+            "https://github.com/jgraph/drawio-desktop/releases/download/v${DRAWIO_VERSION}/drawio-amd64-${DRAWIO_VERSION}.deb"
+          sudo apt-get update
+          sudo apt-get install -y /tmp/drawio.deb xvfb
+
+      # The universal .dmg is copied to /Applications, which is exactly the
+      # bundle path the resolution order looks for, and leaves nothing named
+      # drawio on PATH - so the fallback case has something to fall back to.
+      - name: Install draw.io Desktop (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          curl -fsSL --retry 3 -o /tmp/drawio.dmg \
+            "https://github.com/jgraph/drawio-desktop/releases/download/v${DRAWIO_VERSION}/draw.io-universal-${DRAWIO_VERSION}.dmg"
+          hdiutil attach -nobrowse -quiet /tmp/drawio.dmg -mountpoint /Volumes/drawio
+          sudo cp -R "/Volumes/drawio/draw.io.app" /Applications/
+          hdiutil detach -quiet /Volumes/drawio
+
+      # The suite exits 0 when draw.io is absent, which is right for a laptop and
+      # wrong here: after the install step above, absence means the install did
+      # not take. So a skipped suite is turned back into a failure.
+      - name: Real export smoke
+        env:
+          ETCH_CLI: ${{ github.workspace }}/bin/etch
+          DISPLAY_WRAPPER: ${{ runner.os == 'Linux' && 'xvfb-run -a' || '' }}
+        run: |
+          set -o pipefail
+          $DISPLAY_WRAPPER python3 tests/smoke/test_real_export.py -v | tee /tmp/smoke.log
+          if grep -q "draw.io Desktop was not found" /tmp/smoke.log; then
+            echo "the install step did not put draw.io where resolution looks" >&2
+            exit 1
+          fi
 
   shellcheck:
     name: shellcheck
