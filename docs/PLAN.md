@@ -158,7 +158,7 @@
 | 1c | portability / security (sips 除去、PNG chunk 検証、DRAWIO_CMD、XXE・上限、bash 3.2 + ShellCheck) | Ubuntu + macOS の CI マトリクス green |
 | 1d | real export smoke test (pin した draw.io Desktop) | **Ubuntu と macOS の両方**で、OS 別の DRAWIO_CMD 解決 → 実 export → SVG/PNG/PDF 検証まで各 1 回以上実走して合格 (v5 minor-2 反映)。**通過済み (2026-08-28)**: ci.yml の `smoke` job が draw.io Desktop 31.3.2 を pin し、Ubuntu (.deb + xvfb) / macOS (universal .dmg → /Applications) の両方で 6 ケース全通過 |
 | 2 | skill 本体 (SKILL.md + authoring/delivery/environment contracts + 参照解決規則) | クリーン環境で skill を読んだエージェントが修復ループを一巡できる (dogfooding) |
-| 3a | release candidate: marketplace manifest / 受入テスト (両配布方式) / THIRD_PARTY_NOTICES / README / security.md | 受入テスト green + license gate 通過 + CHANGELOG/tag/version 整合 |
+| 3a | release candidate: marketplace manifest / 受入テスト (両配布方式) / THIRD_PARTY_NOTICES / README / security.md | 受入テスト green + license gate 通過 + CHANGELOG/tag/version 整合。**通過済み (2026-08-28)**: `tests/acceptance/test_distribution.py` が plugin / standalone の 2 layout を Ubuntu・macOS 両方で一巡し (Phase 2 で未確認だった Linux 一巡をここで回収)、license gate は pinned SHA への再実査で出所不明 0、version 整合は `scripts/build-release.py --check` が CI で強制する。記録は `docs/phase3a-release-candidate.md`。tag は Phase 3b で打つ |
 | 3b | public 化 + v0.1.0 release | Koyo の明示承認 (repo public 化は外部公開操作のため) |
 | 4 | vault one-shot migration (§8): inventory → dry-run → cutover → post-check。rollback は backup からの復元手順を事前に文書化 | 事後検証 3 点 (skill scan 単一 / export 実走 / Obsidian 表示) 合格。changelog 記録 |
 

@@ -87,3 +87,5 @@ authoring-contract は「診断だけからは決まらない直しは修復で�
 | proposal mode が正本を触らない | 通過 (実測) |
 
 **未確認**: Linux 上での一巡は試していない (macOS + draw.io Desktop 31.3.2 のみ)。skill 単体配布の閉包で `references/upstream/` と `bin/etch` が解決できるかも Phase 3a の受入テストの範囲で、ここでは repo layout での実行しか確かめていない。
+
+→ **いずれも Phase 3a で回収済み** (2026-08-28)。`tests/acceptance/test_distribution.py` が plugin / standalone の 2 layout を Ubuntu・macOS 両方で一巡する。単体配布での `references/upstream/` 解決は実際に壊れており (repo layout 直書き)、`lib/etch_paths.py` で直した。詳細は `docs/phase3a-release-candidate.md`。
