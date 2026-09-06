@@ -1,6 +1,6 @@
 ---
 name: etching
-description: Always use when the user asks to create, generate, draw, edit, fix, or export a diagram — flowchart, architecture diagram, ER diagram, sequence diagram, class diagram, state diagram, network diagram, wireframe — or mentions draw.io, drawio, .drawio files, or exporting a diagram to SVG/PNG/PDF. 図・フローチャート・アーキテクチャ図・ER 図・シーケンス図・構成図の作成・編集・書き出し依頼で必ず使う。呼び出し名は etching。
+description: Always use when the user asks to create, generate, draw, edit, fix, or export a diagram — flowchart, architecture diagram, ER diagram, sequence diagram, class diagram, state diagram, network diagram, wireframe — or mentions draw.io, drawio, .drawio files, or exporting a diagram to SVG/PNG/PDF. 図・フローチャート・アーキテクチャ図・ER 図・シーケンス図・構成図の作成・編集・書き出し依頼で必ず使う。呼び出し名は etching。Obsidian Canvas (.canvas) ファイルの作成・編集は json-canvas を使う (本 skill が扱うのは .drawio のみ)。
 ---
 
 # etching
