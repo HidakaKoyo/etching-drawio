@@ -4,6 +4,10 @@ Hand-written. Versions are the plugin version in `.claude-plugin/plugin.json`;
 `skills/etching/VERSION` is a generated copy of it and the diagnostics
 `schemaVersion` moves independently (README, "Versioning").
 
+## Unreleased
+
+- skills/etching: description に json-canvas への negative trigger を追記 (Obsidian .canvas は json-canvas、本 skill は .drawio のみ)
+
 ## 0.1.0 — 2026-08-28
 
 First release. Everything below is new.
